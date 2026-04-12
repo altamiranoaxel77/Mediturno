@@ -1,0 +1,39 @@
+# ─────────────────────────────────────────────────────────────
+# DEPENDENCIAS DEL PROYECTO
+# Instalar con: pip install -r requirements.txt
+# ─────────────────────────────────────────────────────────────
+
+# Framework web principal — maneja rutas, requests y responses
+fastapi==0.111.0
+
+# Servidor ASGI — ejecuta la aplicación FastAPI
+# [standard] incluye soporte para WebSockets y mejor performance
+uvicorn[standard]==0.29.0
+
+# ORM — mapea las tablas de PostgreSQL a clases Python
+sqlalchemy==2.0.30
+
+# Herramienta de migraciones — controla los cambios en la DB
+alembic==1.13.1
+
+# Driver de conexión entre Python y PostgreSQL
+# binary = versión precompilada, más fácil de instalar
+psycopg2-binary==2.9.9
+
+# Validación de datos — define la estructura de entrada/salida de la API
+pydantic==2.7.1
+
+# Extensión de Pydantic para leer variables de entorno desde .env
+pydantic-settings==2.2.1
+
+# Carga las variables del archivo .env al entorno de Python
+python-dotenv==1.0.1
+
+# Manejo de tokens JWT para autenticación de usuarios
+python-jose[cryptography]==3.3.0
+
+# Encriptación de contraseñas con bcrypt
+passlib[bcrypt]==1.7.4
+
+# Necesario para recibir formularios y archivos en FastAPI
+python-multipart==0.0.9
