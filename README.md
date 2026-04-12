@@ -2,7 +2,7 @@
 
 Sistema de Gestión de Turnos para Centros de Salud.
 
-Aplicación web que permite administrar hospitales, médicos, pacientes, disponibilidades horarias y turnos médicos.
+Aplicación web multi-tenant que permite administrar hospitales, médicos, pacientes, disponibilidades horarias y turnos médicos.
 
 ---
 
@@ -19,9 +19,57 @@ Aplicación web que permite administrar hospitales, médicos, pacientes, disponi
 
 ---
 
+## Estructura del proyecto
+
+```
+Mediturno/
+├── backend/
+│   ├── app/
+│   │   ├── __init__.py
+│   │   ├── main.py                  ← Entrada FastAPI, registro de routers
+│   │   ├── config.py                ← Variables de entorno (pydantic-settings)
+│   │   ├── database.py              ← Engine SQLAlchemy, sesión, Base
+│   │   └── modules/                 ← Un módulo por entidad del sistema
+│   │       ├── auth/
+│   │       ├── dia_semana/
+│   │       ├── disponibilidad/
+│   │       ├── especialidad/
+│   │       ├── hospital/
+│   │       ├── medico/
+│   │       ├── obra_social/
+│   │       ├── paciente/
+│   │       ├── rol/
+│   │       ├── turno/
+│   │       └── usuario/
+│   ├── migrations/
+│   │   ├── versions/                ← Archivos de migración generados por Alembic
+│   │   ├── env.py                   ← Configuración de Alembic (lee el .env)
+│   │   └── script.py.mako
+│   ├── .env                         ← Variables privadas (NO subir al repo)
+│   ├── .env.example                 ← Plantilla del .env
+│   ├── .gitignore
+│   ├── alembic.ini
+│   └── requirements.txt
+└── frontend/                        ← Aplicación Vue.js (próximamente)
+```
+
+Cada módulo dentro de `app/modules/` sigue esta estructura interna:
+
+```
+modules/turno/
+├── __init__.py
+├── model.py        ← Modelo SQLAlchemy (define la tabla en la BD)
+├── schema.py       ← Schemas Pydantic (valida entrada y salida de datos)
+├── repository.py   ← Acceso a base de datos (solo consultas SQL)
+├── service.py      ← Lógica de negocio y validaciones
+└── router.py       ← Endpoints HTTP (rutas FastAPI)
+```
+
+---
+
 ## Requisitos previos
 
-Antes de instalar el proyecto, asegurate de tener lo siguiente instalado:
+Antes de instalar el proyecto asegurate de tener lo siguiente instalado:
 
 - [Python 3.11](https://www.python.org/downloads/)
 - [PostgreSQL 18](https://www.postgresql.org/download/)
@@ -72,29 +120,23 @@ CREATE DATABASE mediturno;
 
 **macOS / Linux**
 ```bash
-# Conectarse como superusuario
 sudo -u postgres psql
 
-# Crear la base de datos:
 CREATE DATABASE mediturno;
 
-# Verificar:
 \l
 
-# Salir:
 \q
 ```
 
 #### Opción B — desde pgAdmin 4
 
-1. Abrir pgAdmin 4 e iniciar sesión con tu contraseña de PostgreSQL.
-2. En el panel izquierdo expandir: **Servers → PostgreSQL → Databases**.
+1. Abrir pgAdmin 4 e iniciar sesión.
+2. En el panel izquierdo: **Servers → PostgreSQL → Databases**.
 3. Clic derecho sobre **Databases** → **Create** → **Database...**
 4. En el campo **Database** escribir: `mediturno`
 5. En **Owner** seleccionar tu usuario (generalmente `postgres`).
 6. Clic en **Save**.
-
-> **Nota:** Verificá que el servicio de PostgreSQL esté corriendo antes de conectarte. En Windows podés comprobarlo en `Servicios (services.msc) → postgresql-x64-18`.
 
 ---
 
@@ -102,23 +144,22 @@ CREATE DATABASE mediturno;
 
 **Windows**
 ```bash
-# Crear el entorno virtual con Python 3.11
+# Crear con Python 3.11 explícitamente
 py -3.11 -m venv venv
 
-# Activar el entorno virtual
+# Activar
 venv\Scripts\activate
 ```
 
 **macOS / Linux**
 ```bash
-# Crear el entorno virtual
 python3.11 -m venv venv
 
-# Activar
 source venv/bin/activate
 ```
 
-> Cuando el entorno esté activo, el prompt de la terminal muestra `(venv)` al inicio. En VS Code: `Ctrl+Shift+P` → **Python: Select Interpreter** → elegir el intérprete de la carpeta `venv`.
+> El prompt debe mostrar `(venv)` al inicio para confirmar que está activo.
+> En VS Code: `Ctrl+Shift+P` → **Python: Select Interpreter** → elegir el intérprete de la carpeta `venv`.
 
 ---
 
@@ -145,12 +186,10 @@ cp .env.example .env
 Abrí el archivo `.env` y completá con tus datos:
 
 ```env
-# URL de conexión a PostgreSQL
 # Formato: postgresql+psycopg2://USUARIO:CONTRASEÑA@HOST:PUERTO/BASE_DE_DATOS
 DATABASE_URL=postgresql+psycopg2://postgres:tu_contraseña@localhost:5432/mediturno
 
-# Clave secreta para firmar los tokens JWT
-# Generá una con: python -c "import secrets; print(secrets.token_hex(32))"
+# Generá una clave con: python -c "import secrets; print(secrets.token_hex(32))"
 SECRET_KEY=pega_aqui_la_clave_generada
 
 ALGORITHM=HS256
@@ -158,51 +197,96 @@ ACCESS_TOKEN_EXPIRE_MINUTES=60
 ENVIRONMENT=development
 ```
 
-Para generar una `SECRET_KEY` segura ejecutá:
+Para generar una `SECRET_KEY` segura:
 
 ```bash
 python -c "import secrets; print(secrets.token_hex(32))"
 ```
 
-> ⚠️ **Nunca subas el archivo `.env` al repositorio.** Contiene contraseñas y claves secretas. Ya está incluido en el `.gitignore`.
+> ⚠️ **Nunca subas el archivo `.env` al repositorio.** Ya está en el `.gitignore`.
 
 ---
 
-### 6. Ejecutar migraciones
+### 6. Crear la estructura de módulos
 
-Las migraciones crean todas las tablas en la base de datos automáticamente:
+> Si clonás el repositorio, las carpetas ya existen. Estos comandos solo son necesarios si estás inicializando el proyecto desde cero.
 
-```bash
-# Aplicar todas las migraciones pendientes
-alembic upgrade head
+**Windows (PowerShell)**
+```powershell
+# Crear las carpetas
+New-Item -ItemType Directory -Force -Path app\modules\rol, app\modules\hospital, app\modules\especialidad, app\modules\obra_social, app\modules\dia_semana, app\modules\usuario, app\modules\medico, app\modules\paciente, app\modules\disponibilidad, app\modules\turno, app\modules\auth
+
+# Crear los archivos __init__.py
+$modules = @("", "\rol", "\hospital", "\especialidad", "\obra_social", "\dia_semana", "\usuario", "\medico", "\paciente", "\disponibilidad", "\turno", "\auth"); foreach ($m in $modules) { New-Item -Force -Path "app\modules$m\__init__.py" -ItemType File | Out-Null }
 ```
 
-Si es la primera vez que se corre el proyecto y no existe ninguna migración:
-
+**macOS / Linux**
 ```bash
-# Generar la migración inicial
-alembic revision --autogenerate -m "initial tables"
+mkdir -p app/modules/{rol,hospital,especialidad,obra_social,dia_semana,usuario,medico,paciente,disponibilidad,turno,auth}
 
-# Aplicarla
-alembic upgrade head
+touch app/modules/__init__.py app/modules/rol/__init__.py app/modules/hospital/__init__.py app/modules/especialidad/__init__.py app/modules/obra_social/__init__.py app/modules/dia_semana/__init__.py app/modules/usuario/__init__.py app/modules/medico/__init__.py app/modules/paciente/__init__.py app/modules/disponibilidad/__init__.py app/modules/turno/__init__.py app/modules/auth/__init__.py
 ```
 
 ---
 
-### 7. Iniciar el servidor
+### 7. Aplicar las migraciones (crear las tablas en la BD)
+
+Las migraciones crean automáticamente las 10 tablas del sistema en PostgreSQL a partir de los modelos ya definidos en el repositorio.
+
+```bash
+alembic upgrade head
+```
+
+Si todo salió bien verás algo así:
+```
+INFO  [alembic.runtime.migration] Running upgrade  -> 21260cc607ff, initial tables
+```
+
+#### Verificar que las tablas se crearon
+
+**Opción A — desde psql:**
+```bash
+psql -U postgres -d mediturno
+
+# Ver todas las tablas:
+\dt
+
+# Salir:
+\q
+```
+
+Deberías ver exactamente estas 10 tablas:
+
+```
+dia_semana
+disponibilidad_medico
+especialidad
+hospital
+medico
+obra_social
+paciente
+rol
+turno
+usuario
+```
+
+**Opción B — desde pgAdmin:**
+
+Expandir: `mediturno → Schemas → public → Tables`
+
+---
+
+### 8. Iniciar el servidor
 
 ```bash
 uvicorn app.main:app --reload --port 8000
 ```
 
 Si ves este mensaje, la instalación fue exitosa:
-
 ```
 INFO:     Uvicorn running on http://127.0.0.1:8000
 INFO:     Application startup complete.
 ```
-
-La API estará disponible en:
 
 | URL | Descripción |
 |-----|-------------|
@@ -218,7 +302,6 @@ La API estará disponible en:
 
 ```bash
 # Nunca trabajar directamente en main
-# Siempre crear una rama nueva por cada tarea
 
 # 1. Actualizar main antes de crear la rama
 git checkout main
@@ -252,7 +335,7 @@ git push origin feature/nombre-de-la-funcionalidad
 Si modificás un modelo SQLAlchemy (nueva columna, nueva tabla, etc.) **siempre** generá una nueva migración:
 
 ```bash
-# 1. Generar la migración
+# 1. Generar la migración automáticamente
 alembic revision --autogenerate -m "descripcion del cambio"
 
 # 2. Revisar el archivo generado en migrations/versions/
@@ -260,7 +343,7 @@ alembic revision --autogenerate -m "descripcion del cambio"
 # 3. Aplicar la migración
 alembic upgrade head
 
-# Para revertir la última migración:
+# Para revertir la última migración aplicada:
 alembic downgrade -1
 ```
 
@@ -298,7 +381,7 @@ pip install -r requirements.txt
 El `.env` tiene variables con formato incorrecto. Verificá que contenga `DATABASE_URL=postgresql+psycopg2://...` y no variables separadas como `db_host`, `db_port`, etc.
 
 #### `psql` no se reconoce como comando (Windows)
-Agregá la carpeta `bin` de PostgreSQL al PATH del sistema:
+Agregá la carpeta `bin` de PostgreSQL al PATH:
 `Panel de Control → Sistema → Variables de entorno → Path → Agregar: C:\Program Files\PostgreSQL\18\bin`
 Reiniciá la terminal.
 
@@ -313,6 +396,12 @@ sudo lsof -i :5432
 ```
 Luego actualizá el puerto en el `.env`: `DATABASE_URL=...@localhost:5433/mediturno`
 
+#### Error al correr `alembic upgrade head`
+Verificá que:
+1. El `.env` tenga el `DATABASE_URL` correcto con el puerto y contraseña reales.
+2. El servicio de PostgreSQL esté corriendo.
+3. La base de datos `mediturno` exista (ver paso 2).
+
 #### Los cambios en el código no se reflejan
 Verificá que uvicorn esté corriendo con el flag `--reload`:
 ```bash
@@ -322,8 +411,6 @@ uvicorn app.main:app --reload --port 8000
 ---
 
 ## Seguridad — archivos que NO deben subirse al repositorio
-
-Los siguientes archivos ya están en el `.gitignore`:
 
 | Archivo / Carpeta | Motivo |
 |-------------------|--------|
