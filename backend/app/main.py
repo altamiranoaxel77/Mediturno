@@ -20,13 +20,15 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
-
+import app.models  # noqa: F401 — carga todos los modelos en memoria
 
 # =============================================================================
 # Instancia principal de FastAPI
 # =============================================================================
 # FastAPI genera automáticamente la documentación interactiva a partir
 # de los tipos y docstrings que definamos en cada endpoint.
+from fastapi.security import HTTPBearer
+
 app = FastAPI(
     title=settings.APP_NAME,
     description=(
@@ -35,9 +37,6 @@ app = FastAPI(
         "disponibilidades y turnos con soporte multi-tenant."
     ),
     version=settings.APP_VERSION,
-    # En producción podés ocultar la documentación pública así:
-    # docs_url=None if settings.ENVIRONMENT == "production" else "/docs",
-    # redoc_url=None if settings.ENVIRONMENT == "production" else "/redoc",
 )
 
 
