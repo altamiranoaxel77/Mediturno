@@ -31,8 +31,8 @@ app = FastAPI(
     title=settings.APP_NAME,
     description=(
         "API REST para el Sistema de Gestión de Turnos Médicos. "
-        "Permite que cada hospital administre médicos, pacientes, "
-        "disponibilidades y turnos."
+        "Permite administrar hospitales, médicos, pacientes, "
+        "disponibilidades y turnos con soporte multi-tenant."
     ),
     version=settings.APP_VERSION,
     # En producción podés ocultar la documentación pública así:
@@ -86,7 +86,7 @@ app.add_middleware(
 #
 # --- DESCOMENTAR A MEDIDA QUE SE CREEN LOS MÓDULOS ---
 #
-# from app.modules.auth.router           import router as auth_router
+from app.modules.auth.router           import router as auth_router
 # from app.modules.hospital.router       import router as hospital_router
 # from app.modules.rol.router            import router as rol_router
 # from app.modules.especialidad.router   import router as especialidad_router
@@ -99,6 +99,7 @@ app.add_middleware(
 # from app.modules.turno.router          import router as turno_router
 #
 # app.include_router(auth_router,            prefix="/api/v1/auth",            tags=["Autenticación"])
+app.include_router(auth_router,            prefix="/api/v1/auth",            tags=["Autenticación"])
 # app.include_router(hospital_router,        prefix="/api/v1/hospitales",       tags=["Hospitales"])
 # app.include_router(rol_router,             prefix="/api/v1/roles",            tags=["Roles"])
 # app.include_router(especialidad_router,    prefix="/api/v1/especialidades",   tags=["Especialidades"])
