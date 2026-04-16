@@ -26,7 +26,7 @@ class UsuarioCreate(UsuarioBase):
     # min_length=8 fuerza contraseñas de al menos 8 caracteres
     password:    str = Field(..., min_length=8, examples=["mipassword123"])
     id_rol:      int = Field(..., examples=[1])
-    id_hospital: int = Field(..., examples=[1])
+    id_hospital: int | None = Field(None, examples=[1])
 
 
 class UsuarioUpdate(BaseModel):
@@ -57,7 +57,7 @@ class RolEnUsuario(BaseModel):
 
 class HospitalEnUsuario(BaseModel):
     """Schema reducido de Hospital para embeber dentro de UsuarioResponse."""
-    id_hospital: int
+    id_hospital: int | None = None
     nombre:      str
 
     class Config:
@@ -78,7 +78,8 @@ class UsuarioResponse(UsuarioBase):
     id_usuario:  int
     activo:      bool
     id_rol:      int
-    id_hospital: int
+    id_hospital: int | None = None
+
 
     # Objetos anidados — el frontend recibe el nombre del rol y hospital
     # directamente en la misma respuesta, sin necesitar otra llamada a la API

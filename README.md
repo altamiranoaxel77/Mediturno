@@ -69,8 +69,21 @@ Mediturno/
 │   ├── .gitignore
 │   ├── alembic.ini
 │   └── requirements.txt
-└── frontend/                        ← Aplicación Vue.js (próximamente)
-```
+└── frontend/
+    ├── src/
+    │   ├── api/                 ← Configuración de Axios (Interceptors y base URL)
+    │   ├── components/          ← Componentes UI genéricos e independientes (Modales, Tablas, Botones)
+    │   ├── layouts/             ← Estructuras maestras (DashboardLayout con Sidebar y Topbar)
+    │   ├── router/              ← Definición de rutas y Navigation Guards (Protección por roles)
+    │   ├── stores/              ← Gestión de estado global con Pinia (Autenticación y datos del usuario)
+    │   ├── views/               ← Páginas completas (El contenido que se inyecta en los layouts)
+    │   │   ├── superadmin/      ← Vistas exclusivas del rol SuperAdmin (HospitalesView, etc.)
+    │   │   ├── LoginView.vue    ← Pantalla de acceso (Sin layout)
+    │   │   └── HomeView.vue     ← Pantalla de bienvenida genérica
+    │   ├── App.vue              ← Componente raíz (Punto de entrada de Vue)
+    │   └── main.js              ← Instancia principal (Donde se inyectan Pinia, Router y estilos globales)
+    ├── package.json             ← Dependencias y scripts de Node.js
+    └── vite.config.js           ← Configuración del empaquetador Vite (Alias de rutas '@', plugins)
 
 Cada módulo dentro de `app/modules/` sigue esta estructura interna:
 
@@ -83,6 +96,7 @@ modules/turno/
 ├── service.py      ← Lógica de negocio y validaciones
 └── router.py       ← Endpoints HTTP (rutas FastAPI)
 ```
+
 
 ---
 
@@ -481,3 +495,19 @@ import app.models  # noqa: F401
 > git commit -m "chore: remove .env from tracking"
 > ```
 > Cambiá inmediatamente la `SECRET_KEY` y la contraseña de la BD.
+
+---
+
+### Configuracion del frontend
+
+##1. Instalar dependencias
+```bash
+cd frontend
+npm install
+npm install vue-router pinia axios  # Asegura las versiones de arquitectura
+```
+##2.Ejecutar desarrollo
+```bash
+npm run dev
+```
+La app estará disponible en http://localhost:5173

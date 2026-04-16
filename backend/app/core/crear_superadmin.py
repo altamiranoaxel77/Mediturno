@@ -21,7 +21,7 @@ def run():
             email="superadmin@mediturno.com",
             password=hashear_password("Admin1234"),
             id_rol=1,
-            id_hospital=1,
+            id_hospital=None, # SuperAdmin no está asociado a ningún hospital
             activo=True
         )
         db.add(usuario)

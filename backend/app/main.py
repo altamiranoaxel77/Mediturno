@@ -15,7 +15,6 @@
 #   http://localhost:8000/docs   → Swagger UI (interfaz visual)
 #   http://localhost:8000/redoc  → ReDoc (documentación alternativa)
 # =============================================================================
-
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
