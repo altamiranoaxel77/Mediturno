@@ -46,8 +46,7 @@ Mediturno/
 │   │   │   ├── jwt.py               ← Creación y verificación de tokens
 │   │   │   ├── security.py          ← Hash y verificación de contraseñas (bcrypt)
 │   │   │   ├── roles.py             ← Constantes de roles del sistema
-│   │   │   ├── seed.py              ← Datos iniciales (roles y días de semana)
-│   │   │   └── crear_superadmin.py  ← Script para crear el primer SuperAdmin
+│   │   │   └── seed.py              ← Datos iniciales (roles, días y SuperAdmin)
 │   │   └── modules/                 ← Un módulo por entidad del sistema
 │   │       ├── auth/
 │   │       ├── dia_semana/
@@ -259,6 +258,7 @@ alembic upgrade head
 Resultado esperado:
 ```
 INFO  [alembic.runtime.migration] Running upgrade  -> 21260cc607ff, initial tables
+INFO  [alembic.runtime.migration] Running upgrade 21260cc607ff -> 002_usuario_hospital_nullable, usuario id_hospital nullable con constraint superadmin
 ```
 
 Verificar tablas creadas:
@@ -280,9 +280,9 @@ usuario
 
 ---
 
-### 8. Cargar datos iniciales (seed)
+### 8. Cargar datos iniciales y crear el SuperAdmin
 
-Este comando inserta los 4 roles del sistema y los 7 días de la semana. **Se ejecuta una sola vez.**
+Este comando hace todo en un solo paso: inserta los roles, los días de la semana y crea el usuario SuperAdmin. **Se ejecuta una sola vez.**
 
 ```bash
 python -m app.core.seed
@@ -290,40 +290,34 @@ python -m app.core.seed
 
 Resultado esperado:
 ```
-Iniciando seed...
+Iniciando seed del sistema Mediturno...
+==================================================
+[1/3] Roles:
   → Insertando rol: SuperAdmin
   → Insertando rol: Admin
   → Insertando rol: Secretario
   → Insertando rol: Doctor
 ✓ Roles OK
+[2/3] Días de la semana:
   → Insertando día: Lunes
   ...
 ✓ Días de la semana OK
+[3/3] Usuario SuperAdmin:
+  → SuperAdmin creado
+     Email:    superadmin@mediturno.com
+     Password: Admin1234
+✓ SuperAdmin OK
+==================================================
 ✓ Seed completado exitosamente
-```
-
----
-
-### 9. Crear el primer usuario SuperAdmin
-
-El SuperAdmin es el dueño de la aplicación. Se crea una sola vez con este script:
-
-```bash
-python -m app.core.crear_superadmin
-```
-
-Resultado esperado:
-```
-Usuario SuperAdmin creado correctamente
-Email:    superadmin@mediturno.com
-Password: Admin1234
 ```
 
 > ⚠️ **Cambiá la contraseña del SuperAdmin** después del primer login. Las credenciales por defecto son solo para el entorno de desarrollo.
 
+> El SuperAdmin no tiene hospital asignado — es el dueño de la plataforma y crea los hospitales desde cero.
+
 ---
 
-### 10. Iniciar el servidor
+### 9. Iniciar el servidor
 
 ```bash
 uvicorn app.main:app --reload --port 8000
@@ -343,7 +337,7 @@ INFO:     Application startup complete.
 
 ---
 
-### 11. Probar el login en Swagger
+### 10. Probar el login en Swagger
 
 1. Abrí `http://localhost:8000/docs`
 2. Expandí `POST /api/v1/auth/login` → **Try it out**
@@ -476,6 +470,12 @@ DATABASE_URL=...@localhost:5433/mediturno
 Falta el import de `app.models` en `main.py`. Verificá que la segunda línea de imports sea:
 ```python
 import app.models  # noqa: F401
+```
+
+#### `Multiple head revisions` al correr `alembic upgrade head`
+Hay dos migraciones que parten del mismo punto. Verificá con `alembic history` y eliminá la migración duplicada de `migrations/versions/`. Luego corré:
+```bash
+alembic upgrade heads
 ```
 
 ---
