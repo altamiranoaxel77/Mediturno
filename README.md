@@ -23,10 +23,10 @@ Aplicación web multi-tenant que permite administrar hospitales, médicos, pacie
 
 | Rol | Descripción |
 |-----|-------------|
-| `SuperAdmin` | Dueño de la aplicación. Crea y gestiona hospitales y sus administradores |
-| `Admin` | Administrador de un hospital. Crea médicos y secretarios dentro de su hospital |
-| `Secretario` | Gestiona turnos, disponibilidades y pacientes de su hospital |
-| `Doctor` | Visualiza su propia agenda de turnos |
+| `SuperAdmin` | Dueño de la aplicación. Crea y gestiona hospitales y sus administradores. No tiene hospital asignado. |
+| `Admin` | Administrador de un hospital. Crea médicos, secretarios y gestiona su hospital. |
+| `Secretario` | Gestiona turnos, disponibilidades y pacientes de su hospital. |
+| `Doctor` | Visualiza su propia agenda de turnos. |
 
 ---
 
@@ -36,7 +36,6 @@ Aplicación web multi-tenant que permite administrar hospitales, médicos, pacie
 Mediturno/
 ├── backend/
 │   ├── app/
-│   │   ├── __init__.py
 │   │   ├── main.py                  ← Entrada FastAPI, registro de routers
 │   │   ├── config.py                ← Variables de entorno (pydantic-settings)
 │   │   ├── database.py              ← Engine SQLAlchemy, sesión, Base
@@ -70,19 +69,31 @@ Mediturno/
 │   └── requirements.txt
 └── frontend/
     ├── src/
-    │   ├── api/                 ← Configuración de Axios (Interceptors y base URL)
-    │   ├── components/          ← Componentes UI genéricos e independientes (Modales, Tablas, Botones)
-    │   ├── layouts/             ← Estructuras maestras (DashboardLayout con Sidebar y Topbar)
-    │   ├── router/              ← Definición de rutas y Navigation Guards (Protección por roles)
-    │   ├── stores/              ← Gestión de estado global con Pinia (Autenticación y datos del usuario)
-    │   ├── views/               ← Páginas completas (El contenido que se inyecta en los layouts)
-    │   │   ├── superadmin/      ← Vistas exclusivas del rol SuperAdmin (HospitalesView, etc.)
-    │   │   ├── LoginView.vue    ← Pantalla de acceso (Sin layout)
-    │   │   └── HomeView.vue     ← Pantalla de bienvenida genérica
-    │   ├── App.vue              ← Componente raíz (Punto de entrada de Vue)
-    │   └── main.js              ← Instancia principal (Donde se inyectan Pinia, Router y estilos globales)
-    ├── package.json             ← Dependencias y scripts de Node.js
-    └── vite.config.js           ← Configuración del empaquetador Vite (Alias de rutas '@', plugins)
+    │   ├── api/
+    │   │   └── axios.js             ← Instancia Axios con interceptores JWT
+    │   ├── layouts/
+    │   │   └── DashboardLayout.vue  ← Layout con sidebar y menú dinámico por rol
+    │   ├── router/
+    │   │   └── index.js             ← Rutas y guards de autenticación por rol
+    │   ├── stores/
+    │   │   └── auth.js              ← Store Pinia (login, logout, usuario actual)
+    │   └── views/
+    │       ├── superadmin/
+    │       │   ├── HospitalesView.vue
+    │       │   └── AdminsView.vue
+    │       ├── admin/
+    │       │   ├── MedicosView.vue
+    │       │   └── UsuariosView.vue
+    │       ├── shared/
+    │       │   ├── TurnosView.vue
+    │       │   ├── DisponibilidadView.vue
+    │       │   └── PacientesView.vue
+    │       ├── doctor/
+    │       │   └── AgendaView.vue
+    │       └── LoginView.vue
+    ├── package.json
+    └── vite.config.js
+```
 
 Cada módulo dentro de `app/modules/` sigue esta estructura interna:
 
@@ -96,20 +107,19 @@ modules/turno/
 └── router.py       ← Endpoints HTTP (rutas FastAPI)
 ```
 
-
 ---
 
 ## Requisitos previos
 
 - [Python 3.11](https://www.python.org/downloads/)
 - [PostgreSQL 18](https://www.postgresql.org/download/)
+- [Node.js 18+](https://nodejs.org/)
 - [Git](https://git-scm.com/)
-- [Node.js 18+](https://nodejs.org/) — para el frontend Vue
 - [pgAdmin 4](https://www.pgadmin.org/) — opcional pero recomendado
 
 ---
 
-## Instalación paso a paso
+## Instalación — Backend
 
 ### 1. Clonar el repositorio
 
@@ -129,13 +139,12 @@ cd mediturno/backend
 
 ### 2. Crear la base de datos
 
-#### Opción A — desde la consola (psql)
+#### Opción A — desde psql
 
 **Windows**
 ```bash
 psql -U postgres
 CREATE DATABASE mediturno;
-\l
 \q
 ```
 
@@ -145,7 +154,6 @@ CREATE DATABASE mediturno;
 ```bash
 sudo -u postgres psql
 CREATE DATABASE mediturno;
-\l
 \q
 ```
 
@@ -154,9 +162,7 @@ CREATE DATABASE mediturno;
 1. Abrir pgAdmin 4 e iniciar sesión.
 2. Panel izquierdo: **Servers → PostgreSQL → Databases**.
 3. Clic derecho sobre **Databases** → **Create** → **Database...**
-4. Campo **Database**: `mediturno`
-5. **Owner**: tu usuario (generalmente `postgres`).
-6. Clic en **Save**.
+4. Campo **Database**: `mediturno` — **Owner**: `postgres` → **Save**.
 
 ---
 
@@ -228,28 +234,7 @@ python -c "import secrets; print(secrets.token_hex(32))"
 
 ---
 
-### 6. Crear la estructura de módulos
-
-> Si clonás el repositorio, las carpetas ya existen. Solo necesario al inicializar desde cero.
-
-**Windows (PowerShell)**
-```powershell
-New-Item -ItemType Directory -Force -Path app\core, app\modules\rol, app\modules\hospital, app\modules\especialidad, app\modules\obra_social, app\modules\dia_semana, app\modules\usuario, app\modules\medico, app\modules\paciente, app\modules\disponibilidad, app\modules\turno, app\modules\auth
-
-$modules = @("", "\rol", "\hospital", "\especialidad", "\obra_social", "\dia_semana", "\usuario", "\medico", "\paciente", "\disponibilidad", "\turno", "\auth"); foreach ($m in $modules) { New-Item -Force -Path "app\modules$m\__init__.py" -ItemType File | Out-Null }
-New-Item -Force -Path app\core\__init__.py -ItemType File | Out-Null
-```
-
-**macOS / Linux**
-```bash
-mkdir -p app/core app/modules/{rol,hospital,especialidad,obra_social,dia_semana,usuario,medico,paciente,disponibilidad,turno,auth}
-touch app/core/__init__.py app/modules/__init__.py
-touch app/modules/{rol,hospital,especialidad,obra_social,dia_semana,usuario,medico,paciente,disponibilidad,turno,auth}/__init__.py
-```
-
----
-
-### 7. Aplicar las migraciones
+### 6. Aplicar las migraciones
 
 ```bash
 alembic upgrade head
@@ -261,28 +246,24 @@ INFO  [alembic.runtime.migration] Running upgrade  -> 21260cc607ff, initial tabl
 INFO  [alembic.runtime.migration] Running upgrade 21260cc607ff -> 002_usuario_hospital_nullable, usuario id_hospital nullable con constraint superadmin
 ```
 
-Verificar tablas creadas:
-
-**Desde psql:**
+Verificar tablas creadas desde psql:
 ```bash
 psql -U postgres -d mediturno -c "\dt"
 ```
 
-**Desde pgAdmin:** `mediturno → Schemas → public → Tables`
-
 Las 10 tablas del sistema:
 ```
-dia_semana          hospital         medico
-disponibilidad_medico   obra_social      paciente
-especialidad        rol              turno
+dia_semana              hospital            medico
+disponibilidad_medico   obra_social         paciente
+especialidad            rol                 turno
 usuario
 ```
 
 ---
 
-### 8. Cargar datos iniciales y crear el SuperAdmin
+### 7. Cargar datos iniciales y crear el SuperAdmin
 
-Este comando hace todo en un solo paso: inserta los roles, los días de la semana y crea el usuario SuperAdmin. **Se ejecuta una sola vez.**
+Este comando hace todo en un solo paso: inserta los 4 roles, los 7 días de la semana y crea el usuario SuperAdmin. **Se ejecuta una sola vez.**
 
 ```bash
 python -m app.core.seed
@@ -311,13 +292,13 @@ Iniciando seed del sistema Mediturno...
 ✓ Seed completado exitosamente
 ```
 
-> ⚠️ **Cambiá la contraseña del SuperAdmin** después del primer login. Las credenciales por defecto son solo para el entorno de desarrollo.
-
+> ⚠️ **Cambiá la contraseña del SuperAdmin** después del primer login.
+>
 > El SuperAdmin no tiene hospital asignado — es el dueño de la plataforma y crea los hospitales desde cero.
 
 ---
 
-### 9. Iniciar el servidor
+### 8. Iniciar el servidor
 
 ```bash
 uvicorn app.main:app --reload --port 8000
@@ -337,7 +318,7 @@ INFO:     Application startup complete.
 
 ---
 
-### 10. Probar el login en Swagger
+### 9. Probar el login en Swagger
 
 1. Abrí `http://localhost:8000/docs`
 2. Expandí `POST /api/v1/auth/login` → **Try it out**
@@ -351,7 +332,28 @@ INFO:     Application startup complete.
 4. Copiá el `access_token` de la respuesta
 5. Hacé clic en **Authorize** (arriba a la derecha)
 6. Pegá el token en el campo **Value** → **Authorize**
-7. Probá `GET /api/v1/auth/me` — debería devolver los datos del SuperAdmin
+7. Probá `GET /api/v1/auth/me` — debería devolver los datos del SuperAdmin con `id_hospital: null`
+
+---
+
+## Instalación — Frontend
+
+### 1. Instalar dependencias
+
+```bash
+cd frontend
+npm install
+```
+
+### 2. Ejecutar en modo desarrollo
+
+```bash
+npm run dev
+```
+
+La app estará disponible en `http://localhost:5173`
+
+> El backend debe estar corriendo en `http://127.0.0.1:8000` para que el frontend pueda conectarse. Esto está configurado en `src/api/axios.js`.
 
 ---
 
@@ -359,13 +361,15 @@ INFO:     Application startup complete.
 
 ```
 SuperAdmin
-    └── Crea Hospitales  →  POST /api/v1/hospitales
-    └── Crea Admins      →  POST /api/v1/usuarios  (rol=Admin, asignado a un hospital)
-            └── Admin crea Médicos     →  POST /api/v1/medicos
-            └── Admin crea Secretarios →  POST /api/v1/usuarios  (rol=Secretario)
-                    └── Secretario gestiona disponibilidades  →  POST /api/v1/disponibilidad
-                    └── Secretario gestiona turnos            →  POST /api/v1/turnos
-                    └── Doctor ve su agenda                   →  GET  /api/v1/turnos/mi-agenda
+    └── Crea Hospitales       →  POST /api/v1/hospitales
+    └── Crea Admins           →  POST /api/v1/usuarios  (id_rol=2, con id_hospital)
+            └── Admin crea Médicos      →  POST /api/v1/medicos
+            └── Admin crea Secretarios →  POST /api/v1/usuarios  (id_rol=3)
+            └── Admin configura disponibilidad → POST /api/v1/disponibilidad
+                    └── Secretario registra pacientes   →  POST /api/v1/pacientes
+                    └── Secretario registra turnos      →  POST /api/v1/turnos
+                    └── Secretario consulta agenda      →  GET  /api/v1/turnos/agenda
+                    └── Doctor ve su agenda             →  GET  /api/v1/turnos/agenda
 ```
 
 ---
@@ -377,12 +381,41 @@ SuperAdmin
 | POST | `/api/v1/auth/login` | Público | Iniciar sesión |
 | GET | `/api/v1/auth/me` | Autenticado | Ver usuario actual |
 | GET | `/api/v1/hospitales` | SuperAdmin | Listar hospitales |
-| GET | `/api/v1/hospitales/{id}` | SuperAdmin | Ver hospital |
 | POST | `/api/v1/hospitales` | SuperAdmin | Crear hospital |
 | PUT | `/api/v1/hospitales/{id}` | SuperAdmin | Actualizar hospital |
 | PUT | `/api/v1/hospitales/{id}/desactivar` | SuperAdmin | Baja lógica |
-
-> Los demás endpoints se irán habilitando a medida que se completen los módulos.
+| GET | `/api/v1/usuarios` | SuperAdmin / Admin | Listar usuarios del hospital |
+| POST | `/api/v1/usuarios` | SuperAdmin / Admin | Crear usuario |
+| PUT | `/api/v1/usuarios/{id}` | SuperAdmin / Admin | Actualizar usuario |
+| PUT | `/api/v1/usuarios/{id}/desactivar` | SuperAdmin / Admin | Baja lógica |
+| GET | `/api/v1/roles` | Autenticado | Listar roles |
+| GET | `/api/v1/especialidades` | Autenticado | Listar especialidades |
+| POST | `/api/v1/especialidades` | SuperAdmin | Crear especialidad |
+| PUT | `/api/v1/especialidades/{id}` | SuperAdmin | Actualizar especialidad |
+| PUT | `/api/v1/especialidades/{id}/desactivar` | SuperAdmin | Baja lógica |
+| GET | `/api/v1/obras-sociales` | Autenticado | Listar obras sociales |
+| POST | `/api/v1/obras-sociales` | SuperAdmin | Crear obra social |
+| PUT | `/api/v1/obras-sociales/{id}` | SuperAdmin | Actualizar obra social |
+| PUT | `/api/v1/obras-sociales/{id}/desactivar` | SuperAdmin | Baja lógica |
+| GET | `/api/v1/medicos` | Admin / Secretario | Listar médicos del hospital |
+| POST | `/api/v1/medicos` | Admin | Registrar médico |
+| PUT | `/api/v1/medicos/{id}` | Admin | Actualizar médico |
+| PUT | `/api/v1/medicos/{id}/desactivar` | Admin | Baja lógica |
+| GET | `/api/v1/pacientes` | Admin / Secretario | Listar pacientes del hospital |
+| GET | `/api/v1/pacientes/buscar?dni=` | Admin / Secretario | Buscar paciente por DNI |
+| POST | `/api/v1/pacientes` | Admin / Secretario | Registrar paciente |
+| PUT | `/api/v1/pacientes/{id}` | Admin / Secretario | Actualizar paciente |
+| PUT | `/api/v1/pacientes/{id}/desactivar` | Admin / Secretario | Baja lógica |
+| GET | `/api/v1/disponibilidad/medico/{id}` | Admin / Secretario | Ver agenda semanal del médico |
+| POST | `/api/v1/disponibilidad` | Admin / Secretario | Configurar disponibilidad |
+| PUT | `/api/v1/disponibilidad/{id}` | Admin / Secretario | Modificar disponibilidad |
+| PUT | `/api/v1/disponibilidad/{id}/desactivar` | Admin / Secretario | Baja lógica |
+| GET | `/api/v1/turnos/disponibles?id_medico=&fecha=` | Admin / Secretario | Consultar slots libres |
+| GET | `/api/v1/turnos/agenda?id_medico=&fecha=` | Todos | Ver agenda del día |
+| GET | `/api/v1/turnos/paciente/{id}` | Admin / Secretario | Historial del paciente |
+| POST | `/api/v1/turnos` | Admin / Secretario | Registrar turno |
+| PUT | `/api/v1/turnos/{id}/estado` | Admin / Secretario / Doctor | Cambiar estado del turno |
+| PUT | `/api/v1/turnos/{id}` | Admin / Secretario / Doctor | Actualizar datos del turno |
 
 ---
 
@@ -449,7 +482,7 @@ pip install -r requirements.txt
 ```
 
 #### `ValidationError` en `DATABASE_URL`
-El `.env` tiene variables con formato incorrecto. Debe contener `DATABASE_URL=postgresql+psycopg2://...` y no variables separadas como `db_host`, `db_port`, etc.
+El `.env` tiene variables con formato incorrecto. Debe contener `DATABASE_URL=postgresql+psycopg2://...` en una sola línea.
 
 #### Error de bcrypt al hashear contraseñas
 ```bash
@@ -461,21 +494,21 @@ pip install bcrypt==4.0.1
 Agregar al PATH: `C:\Program Files\PostgreSQL\18\bin` y reiniciar la terminal.
 
 #### Puerto 5432 en uso
-PostgreSQL puede correr en otro puerto (ej: 5433). Actualizá el puerto en el `.env`:
+PostgreSQL puede estar corriendo en otro puerto (ej: 5433). Actualizá el puerto en el `.env`:
 ```
-DATABASE_URL=...@localhost:5433/mediturno
+DATABASE_URL=postgresql+psycopg2://postgres:contraseña@localhost:5433/mediturno
 ```
 
 #### Error 500 al hacer login — `expression 'Rol' failed`
-Falta el import de `app.models` en `main.py`. Verificá que la segunda línea de imports sea:
+Falta el import de `app.models` en `main.py`. Verificá que exista esta línea:
 ```python
 import app.models  # noqa: F401
 ```
 
 #### `Multiple head revisions` al correr `alembic upgrade head`
-Hay dos migraciones que parten del mismo punto. Verificá con `alembic history` y eliminá la migración duplicada de `migrations/versions/`. Luego corré:
+Hay dos migraciones que parten del mismo punto. Verificá con `alembic history`, eliminá el archivo duplicado de `migrations/versions/` y volvé a correr:
 ```bash
-alembic upgrade heads
+alembic upgrade head
 ```
 
 ---
@@ -495,19 +528,3 @@ alembic upgrade heads
 > git commit -m "chore: remove .env from tracking"
 > ```
 > Cambiá inmediatamente la `SECRET_KEY` y la contraseña de la BD.
-
----
-
-### Configuracion del frontend
-
-##1. Instalar dependencias
-```bash
-cd frontend
-npm install
-npm install vue-router pinia axios  # Asegura las versiones de arquitectura
-```
-##2.Ejecutar desarrollo
-```bash
-npm run dev
-```
-La app estará disponible en http://localhost:5173
