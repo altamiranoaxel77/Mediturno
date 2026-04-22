@@ -26,7 +26,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ── Routers ────────────────────────────────────────────────────────────────────
 from app.modules.auth.router           import router as auth_router
 from app.modules.hospital.router       import router as hospital_router
 from app.modules.usuario.router        import router as usuario_router
@@ -36,7 +35,7 @@ from app.modules.obra_social.router    import router as obra_social_router
 from app.modules.medico.router         import router as medico_router
 from app.modules.paciente.router       import router as paciente_router
 from app.modules.disponibilidad.router import router as disponibilidad_router
-# from app.modules.turno.router        import router as turno_router
+from app.modules.turno.router          import router as turno_router
 
 app.include_router(auth_router,           prefix="/api/v1/auth",           tags=["Autenticación"])
 app.include_router(hospital_router,       prefix="/api/v1/hospitales",      tags=["Hospitales"])
@@ -47,9 +46,8 @@ app.include_router(obra_social_router,    prefix="/api/v1/obras-sociales",  tags
 app.include_router(medico_router,         prefix="/api/v1/medicos",         tags=["Médicos"])
 app.include_router(paciente_router,       prefix="/api/v1/pacientes",       tags=["Pacientes"])
 app.include_router(disponibilidad_router, prefix="/api/v1/disponibilidad",  tags=["Disponibilidad"])
-# app.include_router(turno_router,        prefix="/api/v1/turnos",          tags=["Turnos"])
+app.include_router(turno_router,          prefix="/api/v1/turnos",          tags=["Turnos"])
 
-# ── Health Checks ──────────────────────────────────────────────────────────────
 @app.get("/", tags=["Health Check"])
 def root():
     return {
